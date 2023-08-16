@@ -1,9 +1,18 @@
 plugins {
     id 'java'
+    id 'maven-publish'
+    id 'signing'
 }
 
 group = 'io.github.paxtechnologyinc'
 version = '1.0-SNAPSHOT'
+
+def static releaseTime() {
+    return new Date().format("yyyyMMdd", TimeZone.getTimeZone("UTC"))
+}
+def sdkDestinationPath = "build/jar/libs/"
+def SDK_BASENAME = "test_jar_sdk"
+def SDK_VERSION = "_V1.00.00_" + releaseTime()
 
 repositories {
     mavenCentral()
@@ -13,7 +22,51 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
+task makeJar(type: Jar) {
+    baseName SDK_BASENAME + SDK_VERSION
+    destinationDir file(sdkDestinationPath)
+}
 
 test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            groupId = 'io.github.paxtechnologyinc'
+            artifactId = 'test_jar'
+            version = version
+
+            // Additional metadata
+            pom {
+                name = 'Test Jar Project'
+                description = 'A test project for demonstration'
+                url = 'https://github.com/PAXTechnologyInc/test_jar'
+
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'Sonatype'
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            credentials {
+                username = project.findProperty("ossrhUsername") ?: System.getenv("OSSRH_USERNAME")
+                password = project.findProperty("ossrhPassword") ?: System.getenv("OSSRH_PASSWORD")
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }
